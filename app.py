@@ -1,6 +1,6 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import whisper
-import os
 from pathlib import Path
 
 # Load the Whisper model
@@ -9,6 +9,22 @@ model = whisper.load_model("base")
 # Streamlit UI
 st.title("Whisper Audio Transcription App")
 st.write("Upload an audio file to transcribe and download as SRT.")
+
+# Embed AdSense ad code
+ad_code = """
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4034435637284460"
+     crossorigin="anonymous"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-4034435637284460"
+     data-ad-slot="XXXXXXXXXX"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+"""
+components.html(ad_code, height=200)
 
 # Upload audio file
 uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
