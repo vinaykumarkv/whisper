@@ -3,3 +3,5 @@ openai-whisper
 torch
 torchvision
 torchaudio
+ffmpeg_installer
+
