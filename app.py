@@ -7,8 +7,10 @@ from pathlib import Path
 model = whisper.load_model("base")
 
 # Streamlit UI
-st.title("Free Audio2SRT Convertor")
-st.write("Upload an audio file to transcribe and download as SRT.")
+st.title("Convert Audio to SRT: Free Audio Transcription Made Easy")
+st.write("""Upload an audio file to transcribe and download as SRT.
+          Convert your audio files to SRT effortlessly with our Audio to SRT tool. 
+          Experience fast and accurate audio transcription for all your needs today!""")
 
 # Embed AdSense ad code
 ad_code = """
