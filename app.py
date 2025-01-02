@@ -3,6 +3,23 @@ import streamlit.components.v1 as components
 import whisper
 from pathlib import Path
 import os
+import subprocess
+
+# Function to install ffmpeg
+def install_ffmpeg():
+    try:
+        # Check if ffmpeg is already installed
+        subprocess.run(["ffmpeg", "-version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        st.write("ffmpeg is already installed.")
+    except subprocess.CalledProcessError:
+        st.write("Installing ffmpeg...")
+        # Install ffmpeg
+        subprocess.run(["sudo", "apt-get", "update"], check=True)
+        subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"], check=True)
+        st.write("ffmpeg installed successfully.")
+
+# Install ffmpeg if not already installed
+install_ffmpeg()
 
 # Load the Whisper model
 model = whisper.load_model("base")
