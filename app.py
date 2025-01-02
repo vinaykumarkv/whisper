@@ -29,7 +29,7 @@ components.html(ad_code, height=200)
 # Embed PayPal donation QR code image
 st.write("If you find this app useful, consider donating to support its development:")
 paypal_qr_code_path = "payment.jpg"  # Replace with the actual path to your QR code image
-st.image(paypal_qr_code_path, caption="Scan to donate via PayPal", width=200, height=200)
+st.image(paypal_qr_code_path, caption="Scan to donate via PayPal", width=200)
 
 # Upload audio file
 uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
