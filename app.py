@@ -7,10 +7,15 @@ import uuid
 import shutil
 from datetime import timedelta
 import imageio_ffmpeg
+import shutil
 
 # Set ffmpeg path using imageio_ffmpeg (needed by whisper)
 ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 os.environ["PATH"] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ["PATH"]
+
+# Check if ffmpeg is accessible
+if shutil.which("ffmpeg") is None:
+    st.warning("Warning: ffmpeg is not found in PATH. Audio transcription may fail or not work for some audio formats.")
 
 # Load Whisper model
 model = whisper.load_model("base")
@@ -73,6 +78,7 @@ if uploaded_file:
 
     st.write("Transcribing...")
 
+    srt_file_path = None
     try:
         result = model.transcribe(str(audio_path))
 
@@ -105,7 +111,7 @@ if uploaded_file:
         try:
             if audio_path.exists():
                 audio_path.unlink()
-            if srt_file_path.exists():
+            if srt_file_path and srt_file_path.exists():
                 srt_file_path.unlink()
         except Exception as cleanup_err:
             st.warning(f"Could not clean up temp files: {cleanup_err}")
