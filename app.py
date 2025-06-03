@@ -4,21 +4,15 @@ import streamlit.components.v1 as components
 import whisper
 from pathlib import Path
 import uuid
-import shutil
+from pydub import AudioSegment
 from datetime import timedelta
-import imageio_ffmpeg
-import shutil
-
-# Set ffmpeg path using imageio_ffmpeg (needed by whisper)
-ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-os.environ["PATH"] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ["PATH"]
-
-# Check if ffmpeg is accessible
-if shutil.which("ffmpeg") is None:
-    st.warning("Warning: ffmpeg is not found in PATH. Audio transcription may fail or not work for some audio formats.")
 
 # Load Whisper model
-model = whisper.load_model("base")
+@st.cache_resource
+def load_model():
+    return whisper.load_model("base")
+
+model = load_model()
 
 # Streamlit UI
 st.title("Convert Audio to SRT: Free Audio Transcription Made Easy")
@@ -56,7 +50,7 @@ def format_srt_time(seconds: float) -> str:
 # Upload audio file
 uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
 
-if uploaded_file:
+if uploaded_file is not None:
     unique_id = uuid.uuid4().hex
     audio_dir = Path("temp_audio")
     srt_dir = Path("temp_srt")
@@ -67,54 +61,53 @@ if uploaded_file:
     with open(audio_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    # Play audio (detect mime type from file extension)
-    ext = audio_path.suffix.lower()
-    mime_type = {
-        ".mp3": "audio/mp3",
-        ".wav": "audio/wav",
-        ".m4a": "audio/mp4"
-    }.get(ext, "audio/mp3")
-    st.audio(str(audio_path), format=mime_type)
+    # Convert audio to WAV if it's MP3 (Whisper works best with WAV)
+    if audio_path.suffix.lower() == ".mp3":
+        audio = AudioSegment.from_mp3(audio_path)
+        wav_path = audio_path.with_suffix(".wav")
+        audio.export(wav_path, format="wav")
+        audio_path = wav_path
 
-    st.write("Transcribing...")
+    # Play audio
+    st.audio(str(audio_path), format='audio/wav')
 
-    srt_file_path = None
-    try:
-        result = model.transcribe(str(audio_path))
-
-        st.subheader("Transcription")
-        st.text_area("Transcribed Text", result["text"], height=300)
-
-        srt_content = ""
-        for segment in result["segments"]:
-            start = format_srt_time(segment["start"])
-            end = format_srt_time(segment["end"])
-            text = segment["text"].strip()
-            srt_content += f"{segment['id'] + 1}\n{start} --> {end}\n{text}\n\n"
-
-        srt_file_path = srt_dir / f"{audio_path.stem}.srt"
-        with open(srt_file_path, "w", encoding="utf-8") as f:
-            f.write(srt_content)
-
-        st.download_button(
-            label="Download Transcription (SRT)",
-            data=srt_content,
-            file_name=f"{audio_path.stem}.srt",
-            mime="text/plain"
-        )
-
-    except Exception as e:
-        st.error(f"An error occurred during transcription: {e}")
-
-    finally:
-        # Cleanup only the files we created (keep the directories)
+    if st.button("Generate Subtitles"):
+        st.write("Transcribing...")
         try:
-            if audio_path.exists():
-                audio_path.unlink()
-            if srt_file_path and srt_file_path.exists():
-                srt_file_path.unlink()
-        except Exception as cleanup_err:
-            st.warning(f"Could not clean up temp files: {cleanup_err}")
+            result = model.transcribe(str(audio_path))
+            st.subheader("Transcription")
+            st.text_area("Transcribed Text", result["text"], height=300)
+
+            srt_content = ""
+            for segment in result["segments"]:
+                start = format_srt_time(segment["start"])
+                end = format_srt_time(segment["end"])
+                text = segment["text"].strip()
+                srt_content += f"{segment['id'] + 1}\n{start} --> {end}\n{text}\n\n"
+
+            srt_file_path = srt_dir / f"{audio_path.stem}.srt"
+            with open(srt_file_path, "w", encoding="utf-8") as f:
+                f.write(srt_content)
+
+            st.download_button(
+                label="Download Transcription (SRT)",
+                data=srt_content,
+                file_name=f"{audio_path.stem}.srt",
+                mime="text/plain"
+            )
+
+        except Exception as e:
+            st.error(f"An error occurred during transcription: {e}")
+
+        finally:
+            # Cleanup only the files we created (keep the directories)
+            try:
+                if audio_path.exists():
+                    audio_path.unlink()
+                if srt_file_path and srt_file_path.exists():
+                    srt_file_path.unlink()
+            except Exception as cleanup_err:
+                st.warning(f"Could not clean up temp files: {cleanup_err}")
 
 # Donation QR code
 st.write("If you find this app useful, consider donating to support its development:")
