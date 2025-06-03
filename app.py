@@ -8,7 +8,7 @@ import shutil
 from datetime import timedelta
 import imageio_ffmpeg
 
-# Set ffmpeg path using imageio_ffmpeg
+# Set ffmpeg path using imageio_ffmpeg (needed by whisper)
 ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 os.environ["PATH"] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ["PATH"]
 
@@ -23,7 +23,7 @@ Convert your audio files to SRT effortlessly with our Audio to SRT tool.
 Experience fast and accurate audio transcription for all your needs today!
 """)
 
-# AdSense (this will only show if deployed on a site with proper setup)
+# AdSense (replace with your actual ad slot ID if needed)
 ad_code = """
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4034435637284460"
      crossorigin="anonymous"></script>
@@ -39,10 +39,7 @@ ad_code = """
 """
 components.html(ad_code, height=200)
 
-# Upload audio file
-uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
-
-def format_srt_time(seconds):
+def format_srt_time(seconds: float) -> str:
     td = timedelta(seconds=seconds)
     total_seconds = int(td.total_seconds())
     milliseconds = int((seconds - total_seconds) * 1000)
@@ -51,25 +48,37 @@ def format_srt_time(seconds):
     secs = total_seconds % 60
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
+# Upload audio file
+uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
+
 if uploaded_file:
-    # Save uploaded file
     unique_id = uuid.uuid4().hex
-    audio_path = Path("temp_audio") / f"{unique_id}_{uploaded_file.name}"
-    audio_path.parent.mkdir(exist_ok=True, parents=True)
+    audio_dir = Path("temp_audio")
+    srt_dir = Path("temp_srt")
+    audio_dir.mkdir(exist_ok=True, parents=True)
+    srt_dir.mkdir(exist_ok=True, parents=True)
+
+    audio_path = audio_dir / f"{unique_id}_{uploaded_file.name}"
     with open(audio_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    st.audio(str(audio_path), format="audio/mp3", start_time=0)
+    # Play audio (detect mime type from file extension)
+    ext = audio_path.suffix.lower()
+    mime_type = {
+        ".mp3": "audio/mp3",
+        ".wav": "audio/wav",
+        ".m4a": "audio/mp4"
+    }.get(ext, "audio/mp3")
+    st.audio(str(audio_path), format=mime_type)
+
     st.write("Transcribing...")
 
     try:
         result = model.transcribe(str(audio_path))
 
-        # Show full transcription
         st.subheader("Transcription")
         st.text_area("Transcribed Text", result["text"], height=300)
 
-        # Generate SRT content
         srt_content = ""
         for segment in result["segments"]:
             start = format_srt_time(segment["start"])
@@ -77,9 +86,7 @@ if uploaded_file:
             text = segment["text"].strip()
             srt_content += f"{segment['id'] + 1}\n{start} --> {end}\n{text}\n\n"
 
-        # Save SRT
-        srt_file_path = Path("temp_srt") / f"{audio_path.stem}.srt"
-        srt_file_path.parent.mkdir(exist_ok=True, parents=True)
+        srt_file_path = srt_dir / f"{audio_path.stem}.srt"
         with open(srt_file_path, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
@@ -94,8 +101,14 @@ if uploaded_file:
         st.error(f"An error occurred during transcription: {e}")
 
     finally:
-        shutil.rmtree("temp_audio", ignore_errors=True)
-        shutil.rmtree("temp_srt", ignore_errors=True)
+        # Cleanup only the files we created (keep the directories)
+        try:
+            if audio_path.exists():
+                audio_path.unlink()
+            if srt_file_path.exists():
+                srt_file_path.unlink()
+        except Exception as cleanup_err:
+            st.warning(f"Could not clean up temp files: {cleanup_err}")
 
 # Donation QR code
 st.write("If you find this app useful, consider donating to support its development:")
