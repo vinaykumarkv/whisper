@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import streamlit.components.v1 as components
 import whisper
@@ -5,12 +6,13 @@ from pathlib import Path
 import uuid
 import shutil
 from datetime import timedelta
-from ffmpeg_installer import install_ffmpeg
+import imageio_ffmpeg
 
-# Ensure ffmpeg is installed
-install_ffmpeg()
+# Set ffmpeg path using imageio_ffmpeg
+ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+os.environ["PATH"] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ["PATH"]
 
-# Load the Whisper model
+# Load Whisper model
 model = whisper.load_model("base")
 
 # Streamlit UI
@@ -21,7 +23,7 @@ Convert your audio files to SRT effortlessly with our Audio to SRT tool.
 Experience fast and accurate audio transcription for all your needs today!
 """)
 
-# Embed AdSense ad code (replace with your actual ad slot ID)
+# AdSense (this will only show if deployed on a site with proper setup)
 ad_code = """
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4034435637284460"
      crossorigin="anonymous"></script>
@@ -50,7 +52,7 @@ def format_srt_time(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
 if uploaded_file:
-    # Save uploaded file with a unique name
+    # Save uploaded file
     unique_id = uuid.uuid4().hex
     audio_path = Path("temp_audio") / f"{unique_id}_{uploaded_file.name}"
     audio_path.parent.mkdir(exist_ok=True, parents=True)
@@ -61,14 +63,13 @@ if uploaded_file:
     st.write("Transcribing...")
 
     try:
-        # Transcribe using Whisper
         result = model.transcribe(str(audio_path))
 
-        # Show transcription
+        # Show full transcription
         st.subheader("Transcription")
         st.text_area("Transcribed Text", result["text"], height=300)
 
-        # Build SRT content
+        # Generate SRT content
         srt_content = ""
         for segment in result["segments"]:
             start = format_srt_time(segment["start"])
@@ -76,29 +77,26 @@ if uploaded_file:
             text = segment["text"].strip()
             srt_content += f"{segment['id'] + 1}\n{start} --> {end}\n{text}\n\n"
 
-        # Save SRT file
+        # Save SRT
         srt_file_path = Path("temp_srt") / f"{audio_path.stem}.srt"
         srt_file_path.parent.mkdir(exist_ok=True, parents=True)
         with open(srt_file_path, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
-        # Download button
         st.download_button(
             label="Download Transcription (SRT)",
             data=srt_content,
             file_name=f"{audio_path.stem}.srt",
-            mime="text/plain",
+            mime="text/plain"
         )
 
     except Exception as e:
         st.error(f"An error occurred during transcription: {e}")
 
     finally:
-        st.write("Cleaning up temporary files...")
         shutil.rmtree("temp_audio", ignore_errors=True)
         shutil.rmtree("temp_srt", ignore_errors=True)
 
-# PayPal donation QR
+# Donation QR code
 st.write("If you find this app useful, consider donating to support its development:")
-paypal_qr_code_path = "payment.jpg"  # Update this if needed
-st.image(paypal_qr_code_path, caption="Scan to donate via PayPal", width=200)
+st.image("payment.jpg", caption="Scan to donate via PayPal", width=200)
