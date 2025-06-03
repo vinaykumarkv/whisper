@@ -4,4 +4,5 @@ torch
 torchvision
 torchaudio
 ffmpeg_installer
+imageio-ffmpeg
 
