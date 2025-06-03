@@ -1,6 +1,6 @@
 streamlit
 openai-whisper
-torch
+torch==2.0.1
 torchvision
 torchaudio
 ffmpeg_installer
