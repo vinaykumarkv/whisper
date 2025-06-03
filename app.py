@@ -6,6 +6,7 @@ from pathlib import Path
 import uuid
 from pydub import AudioSegment
 from datetime import timedelta
+import shutil
 
 # Load Whisper model
 @st.cache_resource
@@ -47,6 +48,11 @@ def format_srt_time(seconds: float) -> str:
     secs = total_seconds % 60
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
+# Check for ffmpeg
+if not shutil.which("ffmpeg"):
+    st.error("ffmpeg is not installed. Please ensure ffmpeg is installed in the environment.")
+    st.stop()
+
 # Upload audio file
 uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
 
@@ -61,9 +67,9 @@ if uploaded_file is not None:
     with open(audio_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    # Convert audio to WAV if it's MP3 (Whisper works best with WAV)
-    if audio_path.suffix.lower() == ".mp3":
-        audio = AudioSegment.from_mp3(audio_path)
+    # Convert audio to WAV if it's MP3 or M4A
+    if audio_path.suffix.lower() in [".mp3", ".m4a"]:
+        audio = AudioSegment.from_file(audio_path)
         wav_path = audio_path.with_suffix(".wav")
         audio.export(wav_path, format="wav")
         audio_path = wav_path
@@ -104,7 +110,7 @@ if uploaded_file is not None:
             try:
                 if audio_path.exists():
                     audio_path.unlink()
-                if srt_file_path and srt_file_path.exists():
+                if 'srt_file_path' in locals() and srt_file_path and srt_file_path.exists():
                     srt_file_path.unlink()
             except Exception as cleanup_err:
                 st.warning(f"Could not clean up temp files: {cleanup_err}")
